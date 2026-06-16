@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 // ─── Supabase client ────────────────────────────────────────────────────────
-const SUPABASE_URL = "https://lljwmqtbbcheyylzxhgl.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsandtcXRiYmNoZXl5bHp4aGdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NDYwNzYsImV4cCI6MjA5NzEyMjA3Nn0.nbR9IdlNYpad8xCtrFUyiA75CKnNwYx8aCD_vsuRa-o";
+const SUPABASE_URL = "https://ermdfruqryohphtqqpek.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVybWRmcnVxcnlvaHBodHFxcGVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1Njg4MDYsImV4cCI6MjA5NzE0NDgwNn0.71XF0T_niHbysNVhP-OpmiyuMj_jqTaTjGCO0MMtpKk";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ─── Model definitions ───────────────────────────────────────────────────────
@@ -23,62 +23,19 @@ const MODELS = [
 const STATUS_COLOR = { active:"#10b981", idle:"#64748b", waiting:"#f59e0b", offline:"#ef4444", planning:"#3b82f6", blocked:"#ef4444", completed:"#10b981", cancelled:"#64748b" };
 const DEPT_COLOR   = { executive:"#3b82f6", dev:"#06b6d4", marketing:"#f59e0b", ops:"#10b981" };
 
-// ─── AI caller ───────────────────────────────────────────────────────────────
-async function callAI(prompt, modelId, apiKeys = {}) {
-  if (modelId.startsWith("claude")) {
-    const key = apiKeys.anthropic;
-    if (!key) return simulateAI(prompt, modelId);
-    try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
-        body: JSON.stringify({ model: modelId, max_tokens: 1000, messages: [{ role: "user", content: prompt }] }),
-      });
-      const d = await r.json();
-      return d.content?.[0]?.text || "[No response]";
-    } catch { return simulateAI(prompt, modelId); }
-  }
-  if (modelId.startsWith("gemini")) {
-    const key = apiKeys.google;
-    if (!key) return simulateAI(prompt, modelId);
-    const model = modelId === "gemini-1.5-pro" ? "gemini-1.5-pro" : "gemini-1.5-flash";
-    try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-      });
-      const d = await r.json();
-      return d.candidates?.[0]?.content?.parts?.[0]?.text || "[No response]";
-    } catch { return simulateAI(prompt, modelId); }
-  }
-  if (modelId.startsWith("groq")) {
-    const key = apiKeys.groq;
-    if (!key) return simulateAI(prompt, modelId);
-    const model = modelId === "groq-mixtral" ? "mixtral-8x7b-32768" : "llama3-70b-8192";
-    try {
-      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-        body: JSON.stringify({ model, max_tokens: 1000, messages: [{ role: "user", content: prompt }] }),
-      });
-      const d = await r.json();
-      return d.choices?.[0]?.message?.content || "[No response]";
-    } catch { return simulateAI(prompt, modelId); }
-  }
-  if (modelId === "gpt-4o" || modelId === "gpt-4o-mini") {
-    const key = apiKeys.openai;
-    if (!key) return simulateAI(prompt, modelId);
-    try {
-      const r = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-        body: JSON.stringify({ model: modelId, max_tokens: 1000, messages: [{ role: "user", content: prompt }] }),
-      });
-      const d = await r.json();
-      return d.choices?.[0]?.message?.content || "[No response]";
-    } catch { return simulateAI(prompt, modelId); }
-  }
-  return simulateAI(prompt, modelId);
+// ─── AI caller — proxied through Supabase Edge Functions ─────────────────────
+const EDGE_BASE = `${SUPABASE_URL}/functions/v1`;
+
+async function callAI(prompt, modelId, _apiKeys = {}, agentId = null, projectId = null) {
+  try {
+    const r = await fetch(`${EDGE_BASE}/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": SUPABASE_KEY },
+      body: JSON.stringify({ prompt, modelId, agentId, projectId }),
+    });
+    const d = await r.json();
+    return d.response || simulateAI(prompt, modelId);
+  } catch { return simulateAI(prompt, modelId); }
 }
 
 function simulateAI(prompt, model) {
@@ -322,35 +279,31 @@ export default function AIEmployee() {
     setChatLoading(false);
   }
 
-  // ── New project ──
+  // ── New project — delegates to edge function ──
   async function createProject(form) {
     const { name, goal, teams, priority, model } = form;
-    const { data: proj, error } = await supabase.from("projects").insert({ name, goal, teams: [teams], priority, preferred_model: model, status: "active", progress: 0 }).select().single();
-    if (error) { showToast("❌ " + error.message); return null; }
-
-    await supabase.from("activity_feed").insert({ project_id: proj.id, event_type: "project_created", message: `New project created: "${name}"` });
-
-    // COO decomposes tasks via AI
-    const cooAgent = agents.find(a => a.role === "Chief Operating Officer");
-    const deptAgents = agents.filter(a => teams === "all" || a.department === teams).map(a => a.name).join(", ");
-    const prompt = `You are the COO of AI Employee. Decompose this project into 6-8 specific tasks. Assign each to the right agent.\n\nProject: "${name}"\nGoal: "${goal}"\nAvailable agents: ${deptAgents}\n\nReturn a bullet list: • Task title → Agent Name → Est. hours`;
-
-    const aiModel = model || globalModel;
-    const response = await callAI(prompt, aiModel, apiKeys);
-
-    if (cooAgent) {
-      await supabase.from("agent_runs").insert({ agent_id: cooAgent.id, project_id: proj.id, model_used: aiModel, prompt_sent: prompt, response_received: response, status: "completed" });
-    }
-
-    await loadProjects();
-    showToast("✅ Project launched! COO is decomposing tasks.");
-    return response;
+    if (!name.trim() || !goal.trim()) return null;
+    try {
+      const r = await fetch(`${EDGE_BASE}/create-project`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "apikey": SUPABASE_KEY },
+        body: JSON.stringify({ name, goal, teams, priority, model: model || globalModel }),
+      });
+      const d = await r.json();
+      if (d.error) { showToast("❌ " + d.error); return null; }
+      await loadProjects();
+      showToast("✅ Project launched! COO is decomposing tasks.");
+      return d.plan;
+    } catch (e) { showToast("❌ " + e.message); return null; }
   }
 
-  // ── Approval ──
+  // ── Approval — delegates to edge function ──
   async function handleApproval(id, approved) {
-    await supabase.from("approvals").update({ status: approved ? "approved" : "rejected", decided_at: new Date().toISOString() }).eq("id", id);
-    await supabase.from("activity_feed").insert({ event_type: "approval_decision", message: `CEO ${approved ? "approved" : "rejected"} approval request` });
+    await fetch(`${EDGE_BASE}/handle-approval`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": SUPABASE_KEY },
+      body: JSON.stringify({ id, approved }),
+    });
     loadApprovals();
     showToast(approved ? "✅ Approved — agents notified" : "✗ Rejected — agents notified");
   }
