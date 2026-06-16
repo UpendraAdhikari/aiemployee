@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 // ─── Supabase client ────────────────────────────────────────────────────────
-const SUPABASE_URL = "https://lljwmqtbbcheyylzxhgl.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsandtcXRiYmNoZXl5bHp4aGdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NDYwNzYsImV4cCI6MjA5NzEyMjA3Nn0.nbR9IdlNYpad8xCtrFUyiA75CKnNwYx8aCD_vsuRa-o";
+const SUPABASE_URL = "https://ermdfruqryohphtqqpek.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVybWRmcnVxcnlvaHBodHFxcGVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1Njg4MDYsImV4cCI6MjA5NzE0NDgwNn0.71XF0T_niHbysNVhP-OpmiyuMj_jqTaTjGCO0MMtpKk";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ─── Model definitions ───────────────────────────────────────────────────────
