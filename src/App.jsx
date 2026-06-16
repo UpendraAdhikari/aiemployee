@@ -224,7 +224,7 @@ textarea.form-input{resize:vertical;min-height:72px}
 `;
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function NEXUS() {
+export default function AIEmployee() {
   const [page, setPage] = useState("dashboard");
   const [agents, setAgents] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -247,7 +247,7 @@ export default function NEXUS() {
   useEffect(() => {
     loadAll();
     // Realtime subscriptions
-    const ch = supabase.channel("nexus-realtime")
+    const ch = supabase.channel("aiemployee-realtime")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "activity_feed" }, p => {
         setActivity(prev => [p.new, ...prev].slice(0, 50));
       })
@@ -306,7 +306,7 @@ export default function NEXUS() {
     const pendingCount = approvals.length;
     const activeAgents = agents.filter(a => a.status === "active").length;
 
-    const prompt = `You are the COO Agent in NEXUS, an AI workforce platform with ${agents.length} specialist agents.\n\nCurrent state:\n- Projects: ${projectSummary}\n- Pending approvals: ${pendingCount}\n- Active agents: ${activeAgents}/${agents.length}\n\nCEO says: "${msg}"\n\nRespond concisely and professionally. Use bullet points for lists.`;
+    const prompt = `You are the COO Agent in AI Employee, an AI workforce platform with ${agents.length} specialist agents.\n\nCurrent state:\n- Projects: ${projectSummary}\n- Pending approvals: ${pendingCount}\n- Active agents: ${activeAgents}/${agents.length}\n\nCEO says: "${msg}"\n\nRespond concisely and professionally. Use bullet points for lists.`;
 
     const model = modelConfigs.executive || globalModel;
     const response = await callAI(prompt, model, apiKeys);
@@ -333,7 +333,7 @@ export default function NEXUS() {
     // COO decomposes tasks via AI
     const cooAgent = agents.find(a => a.role === "Chief Operating Officer");
     const deptAgents = agents.filter(a => teams === "all" || a.department === teams).map(a => a.name).join(", ");
-    const prompt = `You are the COO of NEXUS. Decompose this project into 6-8 specific tasks. Assign each to the right agent.\n\nProject: "${name}"\nGoal: "${goal}"\nAvailable agents: ${deptAgents}\n\nReturn a bullet list: • Task title → Agent Name → Est. hours`;
+    const prompt = `You are the COO of AI Employee. Decompose this project into 6-8 specific tasks. Assign each to the right agent.\n\nProject: "${name}"\nGoal: "${goal}"\nAvailable agents: ${deptAgents}\n\nReturn a bullet list: • Task title → Agent Name → Est. hours`;
 
     const aiModel = model || globalModel;
     const response = await callAI(prompt, aiModel, apiKeys);
@@ -378,7 +378,7 @@ export default function NEXUS() {
   if (loading) return (
     <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0a0e1a", color: "#60a5fa", flexDirection: "column", gap: 12 }}>
       <div style={{ fontSize: 32 }}>⚡</div>
-      <div style={{ fontSize: 14, fontWeight: 600 }}>Connecting to NEXUS...</div>
+      <div style={{ fontSize: 14, fontWeight: 600 }}>Connecting to AI Employee...</div>
       <div style={{ fontSize: 11, color: "#64748b" }}>Loading agents & projects from Supabase</div>
     </div>
   );
@@ -390,13 +390,13 @@ export default function NEXUS() {
         {/* ── Sidebar ── */}
         <div className="sidebar">
           <div className="logo">
-            <div className="logo-name">NEXUS</div>
+            <div className="logo-name">AI Employee</div>
             <div className="logo-sub">AI Workforce · Supabase</div>
           </div>
           <div className="nav">
             <div className="nav-section">
               <div className="nav-label">Command</div>
-              {[["dashboard","🏠","Dashboard"],["agents","🤖","Agents"],["projects","📁","Projects"],["chat","💬","Ask NEXUS"]].map(([id,icon,label]) => (
+              {[["dashboard","🏠","Dashboard"],["agents","🤖","Agents"],["projects","📁","Projects"],["chat","💬","Ask AI Employee"]].map(([id,icon,label]) => (
                 <button key={id} className={`nav-btn ${page===id?"active":""}`} onClick={() => nav(id)}>
                   <span className="nav-dot" style={{ background: page===id?"var(--accent)":"var(--text3)" }}/>
                   {icon} {label}
@@ -427,7 +427,7 @@ export default function NEXUS() {
         <div className="main">
           <div className="topbar">
             <div className="topbar-title">
-              {{ dashboard:"CEO Dashboard", agents:"Agent Team", projects:"All Projects", chat:"Ask NEXUS", models:"AI Model Router", approvals:"Pending Approvals", audit:"Audit Log" }[page]}
+              {{ dashboard:"CEO Dashboard", agents:"Agent Team", projects:"All Projects", chat:"Ask AI Employee", models:"AI Model Router", approvals:"Pending Approvals", audit:"Audit Log" }[page]}
             </div>
             <select className="model-sel" value={globalModel} onChange={e => setGlobalModel(e.target.value)}>
               {MODELS.map(m => <option key={m.id} value={m.id}>{m.name} ({m.provider}) {m.free?"· Free":""}</option>)}
@@ -490,7 +490,7 @@ export default function NEXUS() {
                       <div key={i} className={`log-msg ${m.role==="ceo"?"":"" }`} style={{ flexDirection: m.role==="ceo"?"row-reverse":"row" }}>
                         <div className="log-avatar" style={{ background: m.role==="ceo"?"rgba(59,130,246,.2)":"rgba(139,92,246,.2)", color: m.role==="ceo"?"var(--accent2)":"var(--purple)" }}>{m.role==="ceo"?"👤":"🤖"}</div>
                         <div className={`log-bubble ${m.role==="ceo"?"ceo-bubble":""}`}>
-                          <div className="log-sender">{m.role==="ceo"?"CEO · You":"COO Agent · NEXUS"}</div>
+                          <div className="log-sender">{m.role==="ceo"?"CEO · You":"COO Agent · AI Employee"}</div>
                           <div className="log-text">{m.text}</div>
                         </div>
                       </div>
@@ -548,7 +548,7 @@ function Dashboard({ projects, agents, approvals, activity, activeCount, totalTa
     if (!brief.trim()) return;
     setBriefLoading(true);
     const model = modelConfigs.executive || globalModel;
-    const response = await callAI(`You are the COO of NEXUS. The CEO gave this goal: "${brief}". Create a concise 6-task breakdown with agent assignments. Be specific.`, model, apiKeys);
+    const response = await callAI(`You are the COO of AI Employee. The CEO gave this goal: "${brief}". Create a concise 6-task breakdown with agent assignments. Be specific.`, model, apiKeys);
     setBriefResult(response);
     await supabase.from("projects").insert({ name: brief.slice(0, 60), goal: brief, teams: ["all"], status: "active", priority: "medium", progress: 0, preferred_model: model });
     await supabase.from("activity_feed").insert({ event_type: "project_created", message: `Quick project launched: "${brief.slice(0,50)}"` });
@@ -613,7 +613,7 @@ function Dashboard({ projects, agents, approvals, activity, activeCount, totalTa
         <div className="card">
           <div className="card-head"><div className="card-title">Quick Project Launch</div></div>
           <div className="form-group">
-            <label className="form-label">Tell NEXUS what to build or achieve</label>
+            <label className="form-label">Tell AI Employee what to build or achieve</label>
             <textarea className="form-input" value={brief} onChange={e => setBrief(e.target.value)} placeholder="e.g. Build a landing page for our new product with email capture and analytics..."/>
           </div>
           <button className="btn btn-primary" onClick={quickLaunch} disabled={briefLoading} style={{width:"100%"}}>
